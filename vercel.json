@@ -19,6 +19,7 @@
     }
   },
   "env": {
-    "FASTAPI_URL": "https://tu-proyecto.vercel.app"
+    "FASTAPI_URL": "https://tu-proyecto.vercel.app",
+    "VERCEL_SUPPORT_LARGE_FUNCTIONS": "1"
   }
 }
