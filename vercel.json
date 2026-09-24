@@ -7,6 +7,10 @@
       "config": {
         "maxLambdaSize": "100mb"
       }
+    },
+    {
+      "src": "frontend/config/wsgi.py",
+      "use": "@vercel/python"
     }
   ],
   "routes": [
@@ -16,11 +20,10 @@
     },
     {
       "src": "/(.*)",
-      "dest": "backend/main.py"
+      "dest": "frontend/config/wsgi.py"
     }
   ],
   "env": {
-    "JWT_SECRET": "@jwt-secret",
     "FASTAPI_URL": "https://tu-proyecto.vercel.app"
   }
 }

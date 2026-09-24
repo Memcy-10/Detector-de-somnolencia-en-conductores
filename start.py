@@ -70,14 +70,6 @@ if __name__ == "__main__":
     print("  Ctrl+C para detener ambos servidores")
     print("=" * 60)
 
-    # Django: asegurarse de tener la base de datos
-    print("\n[Django] Aplicando migraciones...")
-    subprocess.run(
-        [sys.executable, "manage.py", "migrate", "--run-syncdb"],
-        cwd=os.path.join(BASE_DIR, "frontend"),
-        check=False
-    )
-
     # Arrancar en hilos paralelos
     t1 = threading.Thread(
         target=run,

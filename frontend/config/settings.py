@@ -17,19 +17,14 @@ DEBUG = os.getenv("DEBUG", "True") == "True"
 ALLOWED_HOSTS = ["*", "localhost", "127.0.0.1", ".vercel.app"]
 
 INSTALLED_APPS = [
-    "django.contrib.contenttypes",
-    "django.contrib.sessions",
-    "django.contrib.messages",
     "django.contrib.staticfiles",
     "drowsiness",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-    "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
-    "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
@@ -44,22 +39,12 @@ TEMPLATES = [
             "context_processors": [
                 "django.template.context_processors.debug",
                 "django.template.context_processors.request",
-                "django.contrib.messages.context_processors.messages",
             ],
         },
     },
 ]
 
 WSGI_APPLICATION = "config.wsgi.application"
-
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "django.db",
-    }
-}
-
-SESSION_ENGINE = "django.contrib.sessions.backends.db"
 
 LANGUAGE_CODE = "es-co"
 TIME_ZONE     = "America/Bogota"
@@ -71,7 +56,3 @@ STATIC_ROOT   = BASE_DIR / "staticfiles"
 
 # URL del backend FastAPI
 FASTAPI_URL = os.getenv("FASTAPI_URL", "http://127.0.0.1:8001")
-
-DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-
-MESSAGE_STORAGE = "django.contrib.messages.storage.session.SessionStorage"

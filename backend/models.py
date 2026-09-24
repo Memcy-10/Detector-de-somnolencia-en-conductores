@@ -3,53 +3,8 @@ models.py — Pydantic schemas para FastAPI
 Validación de request/response con documentación automática en Swagger.
 """
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, Field
 from typing import Optional, List
-
-
-# ─── Auth ────────────────────────────────────────────────────────
-
-class RegisterRequest(BaseModel):
-    username: str = Field(..., min_length=3, max_length=50, description="Nombre de usuario")
-    email: EmailStr = Field(..., description="Correo electrónico")
-    password: str = Field(..., min_length=6, description="Contraseña (mín. 6 caracteres)")
-
-    model_config = {
-        "json_schema_extra": {
-            "example": {
-                "username": "conductor01",
-                "email": "conductor@ejemplo.com",
-                "password": "segura123"
-            }
-        }
-    }
-
-
-class LoginRequest(BaseModel):
-    username: str = Field(..., description="Nombre de usuario")
-    password: str = Field(..., description="Contraseña")
-
-    model_config = {
-        "json_schema_extra": {
-            "example": {
-                "username": "conductor01",
-                "password": "segura123"
-            }
-        }
-    }
-
-
-class TokenResponse(BaseModel):
-    access_token: str = Field(..., description="JWT de acceso")
-    token_type: str = Field(default="bearer")
-    username: str
-    expires_in: int = Field(description="Segundos hasta expiración")
-
-
-class UserPublic(BaseModel):
-    id: int
-    username: str
-    email: str
 
 
 # ─── Análisis de frame ───────────────────────────────────────────

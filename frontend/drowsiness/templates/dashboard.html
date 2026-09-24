@@ -459,9 +459,13 @@
 {% block content %}
 <!-- Variables de Django para JS -->
 <script>
-  const JWT_TOKEN  = "{{ jwt_token }}";
+  const SESSION_KEY = 'drivesafe_session';
+  const session = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+  if (!session || !session.username) {
+    window.location.href = '{% url "login" %}';
+  }
   const FASTAPI_URL = "{{ fastapi_url }}";
-  const USERNAME   = "{{ username }}";
+  const USERNAME = session ? session.username : 'Usuario';
 </script>
 
 <div class="app">
@@ -475,7 +479,7 @@
     </div>
     <div class="nav-right">
       <span class="nav-user">Conductor: <strong>{{ username }}</strong></span>
-      <a href="{% url 'logout' %}" class="btn-icon">⬡ Cerrar sesión</a>
+      <a href="{% url 'logout' %}" id="logoutButton" class="btn-icon">⬡ Cerrar sesión</a>
     </div>
   </nav>
 
@@ -697,12 +701,22 @@ let fpsDisplay    = 0;
 let fpsTimer      = null;
 let calibrating   = false;
 let calBuffer     = [];
+let audioContext  = null;
+let warningTimer  = null;
+let dangerOscillator = null;
+let dangerGain = null;
 
 const INTERVAL    = 300;   // ms entre frames
 const CAL_FRAMES  = 50;    // frames para calibrar
 
 // ─── Inicialización ───────────────────────────────────────────
 window.addEventListener('load', () => {
+  document.getElementById('logoutButton').addEventListener('click', (event) => {
+    event.preventDefault();
+    localStorage.removeItem('drivesafe_session');
+    stopAlertAudio();
+    window.location.href = '{% url "login" %}';
+  });
   checkBackendHealth();
   setInterval(checkBackendHealth, 15000);
   startSessionTimer();
@@ -737,6 +751,7 @@ function startSessionTimer() {
 // ─── Control de cámara ────────────────────────────────────────
 async function startDetection() {
   try {
+    startAlertAudio();
     stream = await navigator.mediaDevices.getUserMedia({
       video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' }
     });
@@ -798,6 +813,7 @@ function togglePause() {
 function stopDetection() {
   analyzing = false;
   paused    = false;
+  stopAlertAudio();
   clearTimeout(analyzeTimer);
   clearInterval(fpsTimer);
   if (stream) {
@@ -837,7 +853,6 @@ async function captureAndAnalyze() {
       method: 'POST',
       headers: {
         'Content-Type':  'application/json',
-        'Authorization': `Bearer ${JWT_TOKEN}`,
       },
       body: JSON.stringify({ frame: frameData, ear_threshold: earThreshold }),
       signal: AbortSignal.timeout(3000),
@@ -928,6 +943,74 @@ function updateBadge(level) {
   badge.textContent = `${icons[level] || '⚪'} ${level}`;
   badge.className   = `hud-badge badge-${level === 'ALERTA' ? 'alert' : level === 'ADVERTENCIA' ? 'warning' : 'danger'}`;
   overlay.style.display = level === 'PELIGRO' ? 'block' : 'none';
+  updateAlertAudio(level);
+}
+
+function startAlertAudio() {
+  if (!audioContext) {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  audioContext.resume();
+}
+
+function playWarningBeep() {
+  if (!audioContext || audioContext.state === 'closed') return;
+  const oscillator = audioContext.createOscillator();
+  const gain = audioContext.createGain();
+  oscillator.type = 'sine';
+  oscillator.frequency.value = 520;
+  gain.gain.setValueAtTime(0.045, audioContext.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.18);
+  oscillator.connect(gain).connect(audioContext.destination);
+  oscillator.start();
+  oscillator.stop(audioContext.currentTime + 0.18);
+}
+
+function startDangerSound() {
+  if (!audioContext || dangerOscillator) return;
+  dangerOscillator = audioContext.createOscillator();
+  dangerGain = audioContext.createGain();
+  dangerOscillator.type = 'square';
+  dangerOscillator.frequency.value = 760;
+  dangerGain.gain.setValueAtTime(0.12, audioContext.currentTime);
+  dangerOscillator.connect(dangerGain).connect(audioContext.destination);
+  dangerOscillator.start();
+}
+
+function stopDangerSound() {
+  if (!dangerOscillator) return;
+  dangerOscillator.stop();
+  dangerOscillator.disconnect();
+  dangerGain.disconnect();
+  dangerOscillator = null;
+  dangerGain = null;
+}
+
+function updateAlertAudio(level) {
+  if (level === 'PELIGRO') {
+    clearInterval(warningTimer);
+    warningTimer = null;
+    startDangerSound();
+  } else {
+    stopDangerSound();
+    if (level === 'ADVERTENCIA' && !warningTimer) {
+      playWarningBeep();
+      warningTimer = setInterval(playWarningBeep, 1200);
+    } else if (level !== 'ADVERTENCIA') {
+      clearInterval(warningTimer);
+      warningTimer = null;
+    }
+  }
+}
+
+function stopAlertAudio() {
+  clearInterval(warningTimer);
+  warningTimer = null;
+  stopDangerSound();
+  if (audioContext) {
+    audioContext.close();
+    audioContext = null;
+  }
 }
 
 // ─── Canvas: landmarks ────────────────────────────────────────

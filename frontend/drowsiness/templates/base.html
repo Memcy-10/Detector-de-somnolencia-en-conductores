@@ -37,27 +37,6 @@
         radial-gradient(ellipse 60% 40% at 90% 80%, rgba(124,92,191,0.06) 0%, transparent 50%);
     }
 
-    /* ── Mensajes Django ─────────────────────────── */
-    .messages {
-      position: fixed; top: 20px; right: 20px;
-      z-index: 9999; display: flex; flex-direction: column; gap: 10px;
-    }
-    .msg {
-      padding: 12px 20px; border-radius: 10px;
-      font-size: 0.875rem; font-weight: 500;
-      animation: slideIn 0.3s ease;
-      backdrop-filter: blur(12px);
-      border: 1px solid;
-    }
-    .msg-error   { background: rgba(255,71,87,0.15); border-color: rgba(255,71,87,0.4); color: #ff6b78; }
-    .msg-success { background: rgba(0,232,122,0.12); border-color: rgba(0,232,122,0.35); color: #00e87a; }
-    .msg-info    { background: rgba(0,212,255,0.12); border-color: rgba(0,212,255,0.35); color: #00d4ff; }
-
-    @keyframes slideIn {
-      from { opacity:0; transform: translateX(30px); }
-      to   { opacity:1; transform: translateX(0);    }
-    }
-
     /* ── Scrollbar ───────────────────────────────── */
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: var(--bg-800); }
@@ -66,24 +45,6 @@
   {% block extra_head %}{% endblock %}
 </head>
 <body>
-  <!-- Mensajes flash Django -->
-  {% if messages %}
-  <div class="messages">
-    {% for message in messages %}
-    <div class="msg msg-{{ message.tags }}">{{ message }}</div>
-    {% endfor %}
-  </div>
-  <script>
-    setTimeout(() => {
-      document.querySelectorAll('.msg').forEach(el => {
-        el.style.opacity = '0';
-        el.style.transition = 'opacity 0.5s';
-        setTimeout(() => el.remove(), 500);
-      });
-    }, 4000);
-  </script>
-  {% endif %}
-
   {% block content %}{% endblock %}
 </body>
 </html>
