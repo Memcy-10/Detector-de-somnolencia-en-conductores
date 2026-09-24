@@ -23,6 +23,14 @@
       "dest": "frontend/config/wsgi.py"
     }
   ],
+  "functions": {
+    "backend/main.py": {
+      "excludeFiles": "{frontend/**,detector_somnolencia.py,.venv/**,**/__pycache__/**}"
+    },
+    "frontend/config/wsgi.py": {
+      "excludeFiles": "{backend/**,detector_somnolencia.py,.venv/**,**/__pycache__/**}"
+    }
+  },
   "env": {
     "FASTAPI_URL": "https://tu-proyecto.vercel.app"
   }
