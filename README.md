@@ -3,6 +3,14 @@
 > **Taller Final — Python · SENA · Tercer Trimestre**  
 > Modelo pre-entrenado: **MediaPipe Face Mesh** (468 landmarks faciales)
 
+**Autores:** Maicol Montoya y Samuel Palacio
+
+**Frontend:**
+https://frontend-eosin-three-ek416xrump.vercel.app/
+
+**Backend:**
+https://detector-de-somnolencia-en-conductores.onrender.com
+
 ---
 
 ## 📌 Descripción
