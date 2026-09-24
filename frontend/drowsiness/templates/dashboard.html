@@ -1,0 +1,1045 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — DriveSafe AI{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* ── Layout ─────────────────────────────────────────────── */
+  body { overflow: hidden; }
+
+  .app {
+    display: grid;
+    grid-template-rows: 56px 1fr;
+    height: 100vh;
+  }
+
+  /* ── Navbar ─────────────────────────────────────────────── */
+  .navbar {
+    background: rgba(10,11,20,0.9);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    z-index: 100;
+  }
+
+  .nav-brand {
+    display: flex; align-items: center; gap: 10px;
+    font-weight: 800; font-size: 1rem; color: var(--text);
+  }
+
+  .nav-brand .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: 0.5; transform: scale(1.4); }
+  }
+
+  .nav-right {
+    display: flex; align-items: center; gap: 16px;
+  }
+
+  .nav-user {
+    font-size: 0.85rem; color: var(--muted); font-weight: 500;
+  }
+
+  .nav-user strong { color: var(--cyan); }
+
+  .btn-icon {
+    padding: 7px 16px;
+    background: var(--glass);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--muted);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s;
+    text-decoration: none;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+
+  .btn-icon:hover { color: var(--red); border-color: rgba(255,71,87,0.4); }
+
+  /* ── Main layout ─────────────────────────────────────────── */
+  .main {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    height: calc(100vh - 56px);
+    overflow: hidden;
+  }
+
+  /* ── Video panel ─────────────────────────────────────────── */
+  .video-panel {
+    position: relative;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  #video {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1);
+  }
+
+  #overlayCanvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    transform: scaleX(-1);
+  }
+
+  /* ── HUD elements ────────────────────────────────────────── */
+  .hud-badge {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 10px 28px;
+    border-radius: 50px;
+    font-weight: 800;
+    font-size: 1rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(16px);
+    border: 2px solid;
+  }
+
+  .badge-alert    { background: rgba(0,232,122,0.15); border-color: var(--green); color: var(--green); }
+  .badge-warning  { background: rgba(255,201,77,0.15); border-color: var(--yellow); color: var(--yellow); }
+  .badge-danger   { background: rgba(255,71,87,0.2);  border-color: var(--red); color: var(--red);
+                    animation: blink 0.6s step-start infinite; }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.3; }
+  }
+
+  .danger-overlay {
+    position: absolute;
+    inset: 0;
+    border: 4px solid var(--red);
+    border-radius: 0;
+    pointer-events: none;
+    animation: borderPulse 0.6s step-start infinite;
+    display: none;
+  }
+
+  @keyframes borderPulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.2; }
+  }
+
+  .hud-top-left {
+    position: absolute;
+    top: 20px; left: 20px;
+    background: rgba(10,11,20,0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 0.75rem;
+    color: var(--muted);
+    min-width: 130px;
+  }
+
+  .hud-metric {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 3px 0;
+  }
+
+  .hud-metric-val {
+    font-weight: 700;
+    font-family: monospace;
+    font-size: 0.85rem;
+  }
+
+  .hud-message {
+    position: absolute;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text);
+    background: rgba(10,11,20,0.7);
+    backdrop-filter: blur(12px);
+    padding: 8px 20px;
+    border-radius: 50px;
+    border: 1px solid var(--border);
+    white-space: nowrap;
+    transition: all 0.3s;
+  }
+
+  /* ── Controls bar ────────────────────────────────────────── */
+  .controls {
+    position: absolute;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 12px;
+    background: rgba(10,11,20,0.8);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 50px;
+    padding: 10px 20px;
+  }
+
+  .ctrl-btn {
+    padding: 8px 20px;
+    border-radius: 50px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  .ctrl-btn.primary {
+    background: linear-gradient(135deg, var(--cyan), var(--purple));
+    border-color: transparent;
+    color: #fff;
+  }
+
+  .ctrl-btn:hover:not(:disabled) {
+    border-color: var(--cyan);
+    color: var(--cyan);
+    background: rgba(0,212,255,0.08);
+  }
+
+  .ctrl-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ── EAR mini graph ──────────────────────────────────────── */
+  .graph-container {
+    position: absolute;
+    bottom: 80px;
+    right: 20px;
+    width: 200px;
+    background: rgba(10,11,20,0.75);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 12px;
+  }
+
+  .graph-label {
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin-bottom: 6px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  #earGraph {
+    width: 100%;
+    height: 55px;
+  }
+
+  /* ── Sidebar ─────────────────────────────────────────────── */
+  .sidebar {
+    background: var(--bg-800);
+    border-left: 1px solid var(--border);
+    padding: 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .sidebar-section {
+    background: var(--glass);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px;
+  }
+
+  .section-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* Metric bars */
+  .metric-row {
+    margin-bottom: 14px;
+  }
+
+  .metric-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+
+  .metric-name {
+    font-size: 0.8rem;
+    color: var(--muted);
+    font-weight: 500;
+  }
+
+  .metric-val {
+    font-size: 0.8rem;
+    font-weight: 700;
+    font-family: monospace;
+    color: var(--text);
+  }
+
+  .metric-bar-bg {
+    height: 6px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .metric-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.25s ease, background 0.3s;
+  }
+
+  /* Counter cards */
+  .counter-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .counter-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    text-align: center;
+  }
+
+  .counter-val {
+    font-size: 2rem;
+    font-weight: 800;
+    font-family: monospace;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .counter-label {
+    font-size: 0.7rem;
+    color: var(--muted);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* Threshold slider */
+  .slider-group { margin-top: 6px; }
+
+  .slider-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 0.8rem;
+  }
+
+  .slider-header span { color: var(--muted); }
+  .slider-header strong { color: var(--cyan); font-family: monospace; }
+
+  input[type="range"] {
+    width: 100%;
+    -webkit-appearance: none;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--cyan);
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(0,212,255,0.5);
+  }
+
+  /* Session info */
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.78rem;
+  }
+
+  .info-row:last-child { border: none; }
+  .info-row span { color: var(--muted); }
+  .info-row strong { color: var(--text); font-family: monospace; }
+
+  /* Status indicator */
+  .status-dot {
+    display: inline-block;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    margin-right: 5px;
+    vertical-align: middle;
+  }
+
+  .status-online  { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .status-offline { background: var(--red); }
+
+  /* Camera placeholder */
+  .cam-placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    color: var(--muted);
+    background: var(--bg-900);
+  }
+
+  .cam-placeholder .icon { font-size: 3rem; }
+  .cam-placeholder p { font-size: 0.9rem; }
+
+  /* Swagger link */
+  .swagger-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--cyan);
+    text-decoration: none;
+    font-size: 0.8rem;
+    font-weight: 600;
+    transition: background 0.2s, border-color 0.2s;
+    margin-top: 4px;
+  }
+
+  .swagger-link:hover {
+    background: rgba(0,212,255,0.08);
+    border-color: rgba(0,212,255,0.4);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Variables de Django para JS -->
+<script>
+  const JWT_TOKEN  = "{{ jwt_token }}";
+  const FASTAPI_URL = "{{ fastapi_url }}";
+  const USERNAME   = "{{ username }}";
+</script>
+
+<div class="app">
+
+  <!-- ── Navbar ─────────────────────────────────────────────── -->
+  <nav class="navbar">
+    <div class="nav-brand">
+      <span>🚗</span>
+      <span>DriveSafe AI</span>
+      <div class="dot"></div>
+    </div>
+    <div class="nav-right">
+      <span class="nav-user">Conductor: <strong>{{ username }}</strong></span>
+      <a href="{% url 'logout' %}" class="btn-icon">⬡ Cerrar sesión</a>
+    </div>
+  </nav>
+
+  <!-- ── Main ───────────────────────────────────────────────── -->
+  <div class="main">
+
+    <!-- ── Video panel ──────────────────────────────────────── -->
+    <div class="video-panel" id="videoPanel">
+
+      <!-- Placeholder inicial -->
+      <div class="cam-placeholder" id="placeholder">
+        <div class="icon">📷</div>
+        <p>Presiona <strong style="color:var(--cyan)">Iniciar Detección</strong> para activar la cámara</p>
+      </div>
+
+      <!-- Video y canvas -->
+      <video id="video" autoplay muted playsinline style="display:none"></video>
+      <canvas id="overlayCanvas" style="display:none"></canvas>
+
+      <!-- Borde de peligro -->
+      <div class="danger-overlay" id="dangerOverlay"></div>
+
+      <!-- Badge de nivel -->
+      <div class="hud-badge badge-alert" id="alertBadge" style="display:none">
+        🟢 ALERTA
+      </div>
+
+      <!-- Métricas HUD top-left -->
+      <div class="hud-top-left" id="hudMetrics" style="display:none">
+        <div class="hud-metric">
+          <span>EAR</span>
+          <span class="hud-metric-val" id="hudEar">—</span>
+        </div>
+        <div class="hud-metric">
+          <span>Blink L</span>
+          <span class="hud-metric-val" id="hudBlinkL">—</span>
+        </div>
+        <div class="hud-metric">
+          <span>Blink R</span>
+          <span class="hud-metric-val" id="hudBlinkR">—</span>
+        </div>
+        <div class="hud-metric">
+          <span>Jaw</span>
+          <span class="hud-metric-val" id="hudJaw">—</span>
+        </div>
+        <div class="hud-metric" style="margin-top:6px; border-top:1px solid var(--border); padding-top:6px;">
+          <span>FPS</span>
+          <span class="hud-metric-val" id="hudFps" style="color:var(--cyan)">—</span>
+        </div>
+      </div>
+
+      <!-- Mensaje del sistema -->
+      <div class="hud-message" id="hudMessage" style="display:none">Iniciando...</div>
+
+      <!-- Mini gráfica EAR -->
+      <div class="graph-container" id="graphContainer" style="display:none">
+        <div class="graph-label">Historial EAR</div>
+        <canvas id="earGraph"></canvas>
+      </div>
+
+      <!-- Controles -->
+      <div class="controls">
+        <button class="ctrl-btn primary" id="btnStart" onclick="startDetection()">
+          ▶ Iniciar Detección
+        </button>
+        <button class="ctrl-btn" id="btnPause" onclick="togglePause()" disabled>
+          ⏸ Pausar
+        </button>
+        <button class="ctrl-btn" id="btnCalibrate" onclick="calibrate()" disabled>
+          🎯 Calibrar EAR
+        </button>
+        <button class="ctrl-btn" id="btnStop" onclick="stopDetection()" disabled>
+          ■ Detener
+        </button>
+      </div>
+    </div><!-- /video-panel -->
+
+    <!-- ── Sidebar ──────────────────────────────────────────── -->
+    <aside class="sidebar">
+
+      <!-- Estado del sistema -->
+      <div class="sidebar-section">
+        <div class="section-title">Estado del sistema</div>
+        <div class="info-row">
+          <span>Backend API</span>
+          <strong>
+            <span class="status-dot status-offline" id="apiDot"></span>
+            <span id="apiStatus">Verificando...</span>
+          </strong>
+        </div>
+        <div class="info-row">
+          <span>Cámara</span>
+          <strong><span id="camStatus">Inactiva</span></strong>
+        </div>
+        <div class="info-row">
+          <span>Modelo</span>
+          <strong>Face Landmarker v1</strong>
+        </div>
+        <div class="info-row">
+          <span>Rostro</span>
+          <strong><span id="faceStatus" style="color:var(--muted)">—</span></strong>
+        </div>
+        <a class="swagger-link" href="{{ fastapi_url }}/docs" target="_blank">
+          📋 Swagger UI — /docs
+        </a>
+      </div>
+
+      <!-- Métricas en tiempo real -->
+      <div class="sidebar-section">
+        <div class="section-title">Métricas en tiempo real</div>
+
+        <div class="metric-row">
+          <div class="metric-header">
+            <span class="metric-name">EAR (Ojos)</span>
+            <span class="metric-val" id="earVal">0.00</span>
+          </div>
+          <div class="metric-bar-bg">
+            <div class="metric-bar-fill" id="earBar" style="width:0%; background:var(--green)"></div>
+          </div>
+        </div>
+
+        <div class="metric-row">
+          <div class="metric-header">
+            <span class="metric-name">Blink Izq.</span>
+            <span class="metric-val" id="blinkLVal">0.00</span>
+          </div>
+          <div class="metric-bar-bg">
+            <div class="metric-bar-fill" id="blinkLBar" style="width:0%; background:var(--cyan)"></div>
+          </div>
+        </div>
+
+        <div class="metric-row">
+          <div class="metric-header">
+            <span class="metric-name">Blink Der.</span>
+            <span class="metric-val" id="blinkRVal">0.00</span>
+          </div>
+          <div class="metric-bar-bg">
+            <div class="metric-bar-fill" id="blinkRBar" style="width:0%; background:var(--cyan)"></div>
+          </div>
+        </div>
+
+        <div class="metric-row" style="margin-bottom:0">
+          <div class="metric-header">
+            <span class="metric-name">Jaw Open (Bostezo)</span>
+            <span class="metric-val" id="jawVal">0.00</span>
+          </div>
+          <div class="metric-bar-bg">
+            <div class="metric-bar-fill" id="jawBar" style="width:0%; background:var(--yellow)"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Contadores de sesión -->
+      <div class="sidebar-section">
+        <div class="section-title">Sesión de conducción</div>
+        <div class="counter-grid">
+          <div class="counter-card">
+            <div class="counter-val" id="cntBlinks" style="color:var(--cyan)">0</div>
+            <div class="counter-label">Parpadeos</div>
+          </div>
+          <div class="counter-card">
+            <div class="counter-val" id="cntYawns" style="color:var(--yellow)">0</div>
+            <div class="counter-label">Bostezos</div>
+          </div>
+          <div class="counter-card">
+            <div class="counter-val" id="cntAlerts" style="color:var(--red)">0</div>
+            <div class="counter-label">Alertas</div>
+          </div>
+          <div class="counter-card">
+            <div class="counter-val" id="cntTime" style="color:var(--green)">0s</div>
+            <div class="counter-label">Tiempo</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Umbral EAR -->
+      <div class="sidebar-section">
+        <div class="section-title">Configuración</div>
+        <div class="slider-group">
+          <div class="slider-header">
+            <span>Umbral EAR</span>
+            <strong id="thresholdLabel">0.25</strong>
+          </div>
+          <input
+            type="range"
+            id="thresholdSlider"
+            min="0.10" max="0.45" step="0.01"
+            value="0.25"
+            oninput="updateThreshold(this.value)"
+          >
+          <p style="font-size:0.73rem; color:var(--muted); margin-top:8px;">
+            Menor valor = más sensible. Usa Calibrar para ajuste automático.
+          </p>
+        </div>
+      </div>
+
+    </aside>
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+// ─── Estado global ────────────────────────────────────────────
+let stream        = null;
+let analyzing     = false;
+let paused        = false;
+let analyzeTimer  = null;
+let sessionStart  = null;
+let sessionTimer  = null;
+let earThreshold  = 0.25;
+let earHistory    = [];
+let blinks        = 0;
+let yawns         = 0;
+let alerts        = 0;
+let lastLevel     = 'ALERTA';
+let prevEyesClosed = false;
+let prevYawning    = false;
+let fpsCounter    = 0;
+let fpsDisplay    = 0;
+let fpsTimer      = null;
+let calibrating   = false;
+let calBuffer     = [];
+
+const INTERVAL    = 300;   // ms entre frames
+const CAL_FRAMES  = 50;    // frames para calibrar
+
+// ─── Inicialización ───────────────────────────────────────────
+window.addEventListener('load', () => {
+  checkBackendHealth();
+  setInterval(checkBackendHealth, 15000);
+  startSessionTimer();
+});
+
+async function checkBackendHealth() {
+  try {
+    const r = await fetch(`${FASTAPI_URL}/api/health`, { signal: AbortSignal.timeout(4000) });
+    if (r.ok) {
+      document.getElementById('apiDot').className    = 'status-dot status-online';
+      document.getElementById('apiStatus').textContent = 'En línea';
+    } else {
+      throw new Error('no ok');
+    }
+  } catch {
+    document.getElementById('apiDot').className    = 'status-dot status-offline';
+    document.getElementById('apiStatus').textContent = 'Sin conexión';
+  }
+}
+
+function startSessionTimer() {
+  sessionStart = Date.now();
+  clearInterval(sessionTimer);
+  sessionTimer = setInterval(() => {
+    const secs = Math.floor((Date.now() - sessionStart) / 1000);
+    const mm   = String(Math.floor(secs / 60)).padStart(2, '0');
+    const ss   = String(secs % 60).padStart(2, '0');
+    document.getElementById('cntTime').textContent = `${mm}:${ss}`;
+  }, 1000);
+}
+
+// ─── Control de cámara ────────────────────────────────────────
+async function startDetection() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' }
+    });
+    const video  = document.getElementById('video');
+    const canvas = document.getElementById('overlayCanvas');
+    video.srcObject = stream;
+
+    await new Promise(r => video.addEventListener('loadedmetadata', r, { once: true }));
+    canvas.width  = video.videoWidth  || 1280;
+    canvas.height = video.videoHeight || 720;
+
+    // Mostrar UI
+    document.getElementById('placeholder').style.display    = 'none';
+    video.style.display  = 'block';
+    canvas.style.display = 'block';
+    document.getElementById('alertBadge').style.display    = 'flex';
+    document.getElementById('hudMetrics').style.display    = 'block';
+    document.getElementById('hudMessage').style.display    = 'block';
+    document.getElementById('graphContainer').style.display = 'block';
+
+    // Botones
+    document.getElementById('btnStart').disabled    = true;
+    document.getElementById('btnPause').disabled    = false;
+    document.getElementById('btnCalibrate').disabled = false;
+    document.getElementById('btnStop').disabled     = false;
+    document.getElementById('camStatus').textContent = 'Activa';
+
+    analyzing = true;
+    paused    = false;
+
+    // FPS counter
+    fpsTimer = setInterval(() => {
+      fpsDisplay = fpsCounter;
+      fpsCounter = 0;
+      document.getElementById('hudFps').textContent = `${fpsDisplay} fps`;
+    }, 1000);
+
+    analyzeLoop();
+  } catch (e) {
+    alert('No se pudo acceder a la cámara: ' + e.message);
+  }
+}
+
+function analyzeLoop() {
+  if (!analyzing) return;
+  if (!paused) {
+    captureAndAnalyze();
+  }
+  analyzeTimer = setTimeout(analyzeLoop, INTERVAL);
+}
+
+function togglePause() {
+  paused = !paused;
+  const btn = document.getElementById('btnPause');
+  btn.textContent = paused ? '▶ Reanudar' : '⏸ Pausar';
+  btn.style.color = paused ? 'var(--yellow)' : '';
+}
+
+function stopDetection() {
+  analyzing = false;
+  paused    = false;
+  clearTimeout(analyzeTimer);
+  clearInterval(fpsTimer);
+  if (stream) {
+    stream.getTracks().forEach(t => t.stop());
+    stream = null;
+  }
+  document.getElementById('video').style.display         = 'none';
+  document.getElementById('overlayCanvas').style.display = 'none';
+  document.getElementById('alertBadge').style.display    = 'none';
+  document.getElementById('hudMetrics').style.display    = 'none';
+  document.getElementById('hudMessage').style.display    = 'none';
+  document.getElementById('graphContainer').style.display = 'none';
+  document.getElementById('placeholder').style.display   = 'flex';
+  document.getElementById('dangerOverlay').style.display = 'none';
+  document.getElementById('btnStart').disabled    = false;
+  document.getElementById('btnPause').disabled    = true;
+  document.getElementById('btnCalibrate').disabled = true;
+  document.getElementById('btnStop').disabled     = true;
+  document.getElementById('camStatus').textContent = 'Inactiva';
+}
+
+// ─── Captura y análisis ───────────────────────────────────────
+const captureCanvas = document.createElement('canvas');
+const captureCtx    = captureCanvas.getContext('2d');
+
+async function captureAndAnalyze() {
+  const video = document.getElementById('video');
+  if (!video.videoWidth) return;
+
+  captureCanvas.width  = video.videoWidth;
+  captureCanvas.height = video.videoHeight;
+  captureCtx.drawImage(video, 0, 0);
+  const frameData = captureCanvas.toDataURL('image/jpeg', 0.7);
+
+  try {
+    const resp = await fetch(`${FASTAPI_URL}/api/analyze`, {
+      method: 'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${JWT_TOKEN}`,
+      },
+      body: JSON.stringify({ frame: frameData, ear_threshold: earThreshold }),
+      signal: AbortSignal.timeout(3000),
+    });
+
+    if (!resp.ok) return;
+    const data = await resp.json();
+    fpsCounter++;
+
+    updateUI(data);
+
+    if (calibrating) processCal(data.ear);
+
+  } catch (e) {
+    // silencioso en timeout
+  }
+}
+
+// ─── Actualizar UI ────────────────────────────────────────────
+function updateUI(data) {
+  // Sidebar bars
+  setBar('earBar',    'earVal',    data.ear,         0.45, getEarColor(data.ear));
+  setBar('blinkLBar', 'blinkLVal', data.blink_left,  1.0,  blinkColor(data.blink_left));
+  setBar('blinkRBar', 'blinkRVal', data.blink_right, 1.0,  blinkColor(data.blink_right));
+  setBar('jawBar',    'jawVal',    data.jaw_open,    1.0,  jawColor(data.jaw_open));
+
+  // HUD
+  document.getElementById('hudEar').textContent    = data.ear.toFixed(3);
+  document.getElementById('hudBlinkL').textContent = data.blink_left.toFixed(3);
+  document.getElementById('hudBlinkR').textContent = data.blink_right.toFixed(3);
+  document.getElementById('hudJaw').textContent    = data.jaw_open.toFixed(3);
+  document.getElementById('hudMessage').textContent = data.message;
+
+  // Face detected
+  const faceEl = document.getElementById('faceStatus');
+  faceEl.textContent = data.face_detected ? 'Detectado' : 'No detectado';
+  faceEl.style.color = data.face_detected ? 'var(--green)' : 'var(--red)';
+
+  // Alert badge
+  updateBadge(data.alert_level);
+
+  // Counters
+  if (data.face_detected) {
+    const eyesClosed = data.blink_left > 0.4 || data.blink_right > 0.4 || data.ear < earThreshold;
+    const yawning    = data.jaw_open > 0.28;
+
+    if (!prevEyesClosed && eyesClosed) { blinks++; document.getElementById('cntBlinks').textContent = blinks; }
+    if (!prevYawning    && yawning)    { yawns++;  document.getElementById('cntYawns').textContent  = yawns;  }
+    prevEyesClosed = eyesClosed;
+    prevYawning    = yawning;
+  }
+
+  if (data.alert_level !== 'ALERTA' && data.alert_level !== lastLevel) {
+    alerts++;
+    document.getElementById('cntAlerts').textContent = alerts;
+  }
+  lastLevel = data.alert_level;
+
+  // EAR history graph
+  earHistory.push(data.ear);
+  if (earHistory.length > 200) earHistory.shift();
+  drawEarGraph();
+
+  // Overlay landmarks
+  drawLandmarks(data.eye_landmarks, data.mouth_landmarks, data.alert_level);
+}
+
+function setBar(barId, valId, value, max, color) {
+  const pct = Math.min((value / max) * 100, 100);
+  document.getElementById(barId).style.width      = pct + '%';
+  document.getElementById(barId).style.background = color;
+  document.getElementById(valId).textContent       = value.toFixed(3);
+}
+
+function getEarColor(ear) {
+  if (ear < earThreshold)       return 'var(--red)';
+  if (ear < earThreshold + 0.05) return 'var(--yellow)';
+  return 'var(--green)';
+}
+
+function blinkColor(v) { return v > 0.4 ? 'var(--red)' : 'var(--cyan)'; }
+function jawColor(v)   { return v > 0.28 ? 'var(--yellow)' : 'var(--green)'; }
+
+function updateBadge(level) {
+  const badge   = document.getElementById('alertBadge');
+  const overlay = document.getElementById('dangerOverlay');
+  const icons   = { 'ALERTA': '🟢', 'ADVERTENCIA': '🟡', 'PELIGRO': '🔴' };
+  badge.textContent = `${icons[level] || '⚪'} ${level}`;
+  badge.className   = `hud-badge badge-${level === 'ALERTA' ? 'alert' : level === 'ADVERTENCIA' ? 'warning' : 'danger'}`;
+  overlay.style.display = level === 'PELIGRO' ? 'block' : 'none';
+}
+
+// ─── Canvas: landmarks ────────────────────────────────────────
+function drawLandmarks(eyePts, mouthPts, level) {
+  const canvas = document.getElementById('overlayCanvas');
+  const ctx    = canvas.getContext('2d');
+  const w      = canvas.width;
+  const h      = canvas.height;
+
+  ctx.clearRect(0, 0, w, h);
+
+  const eyeColor   = (level === 'PELIGRO')   ? '#ff4757' :
+                     (level === 'ADVERTENCIA')? '#ffc94d' : '#00e87a';
+  const mouthColor = (level === 'ADVERTENCIA' || level === 'PELIGRO') ? '#ffc94d' : '#00d4ff';
+
+  // Dibujar ojos (12 puntos: 6 izq + 6 der)
+  drawPolyline(ctx, eyePts.slice(0, 6),  w, h, eyeColor,   1.5);
+  drawPolyline(ctx, eyePts.slice(6, 12), w, h, eyeColor,   1.5);
+  // Dibujar boca (8 puntos)
+  drawPolyline(ctx, mouthPts,            w, h, mouthColor, 1.5);
+}
+
+function drawPolyline(ctx, pts, w, h, color, lw) {
+  if (!pts || pts.length < 2) return;
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x * w, pts[0].y * h);
+  for (let i = 1; i < pts.length; i++) {
+    ctx.lineTo(pts[i].x * w, pts[i].y * h);
+  }
+  ctx.closePath();
+  ctx.strokeStyle = color;
+  ctx.lineWidth   = lw;
+  ctx.shadowColor = color;
+  ctx.shadowBlur  = 4;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // Puntos
+  pts.forEach(p => {
+    ctx.beginPath();
+    ctx.arc(p.x * w, p.y * h, 2, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+  });
+}
+
+// ─── Mini gráfica EAR ─────────────────────────────────────────
+function drawEarGraph() {
+  const canvas = document.getElementById('earGraph');
+  const ctx    = canvas.getContext('2d');
+  const w      = canvas.width  = canvas.offsetWidth;
+  const h      = canvas.height = canvas.offsetHeight || 55;
+
+  ctx.clearRect(0, 0, w, h);
+
+  // Línea umbral
+  const ty = h - (earThreshold / 0.45) * h;
+  ctx.setLineDash([3, 3]);
+  ctx.strokeStyle = 'rgba(255,71,87,0.6)';
+  ctx.lineWidth   = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, ty); ctx.lineTo(w, ty);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  if (earHistory.length < 2) return;
+
+  const step = w / (earHistory.length - 1);
+  ctx.beginPath();
+  earHistory.forEach((v, i) => {
+    const x = i * step;
+    const y = h - (v / 0.45) * h;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+
+  const last  = earHistory[earHistory.length - 1];
+  const color = last < earThreshold ? '#ff4757' : '#00e87a';
+  ctx.strokeStyle = color;
+  ctx.lineWidth   = 1.5;
+  ctx.shadowColor = color;
+  ctx.shadowBlur  = 3;
+  ctx.stroke();
+  ctx.shadowBlur  = 0;
+}
+
+// ─── Calibración EAR ─────────────────────────────────────────
+function calibrate() {
+  if (calibrating) return;
+  calibrating = true;
+  calBuffer   = [];
+  document.getElementById('hudMessage').textContent = '🎯 Calibrando EAR — mantén ojos abiertos...';
+  document.getElementById('btnCalibrate').disabled  = true;
+}
+
+function processCal(ear) {
+  if (ear > 0) calBuffer.push(ear);
+  if (calBuffer.length >= CAL_FRAMES) {
+    calibrating  = false;
+    const avg    = calBuffer.reduce((a, b) => a + b, 0) / calBuffer.length;
+    earThreshold = Math.round(avg * 0.78 * 100) / 100;
+    document.getElementById('thresholdSlider').value = earThreshold;
+    document.getElementById('thresholdLabel').textContent = earThreshold.toFixed(2);
+    document.getElementById('hudMessage').textContent = `Calibración completa. Umbral: ${earThreshold.toFixed(2)}`;
+    document.getElementById('btnCalibrate').disabled = false;
+    setTimeout(() => { document.getElementById('hudMessage').textContent = 'Conductor alerta'; }, 2000);
+  }
+}
+
+// ─── Slider EAR ───────────────────────────────────────────────
+function updateThreshold(val) {
+  earThreshold = parseFloat(val);
+  document.getElementById('thresholdLabel').textContent = earThreshold.toFixed(2);
+}
+</script>
+{% endblock %}
